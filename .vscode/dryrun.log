@@ -1,0 +1,5 @@
+make --dry-run --keep-going --print-directory
+make: Entering directory '/home/haimor/Unix_File_System'
+make: Nothing to be done for 'all'.
+make: Leaving directory '/home/haimor/Unix_File_System'
+ 
