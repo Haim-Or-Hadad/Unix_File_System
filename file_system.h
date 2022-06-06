@@ -26,6 +26,7 @@ int size_blocks;
  */
 struct inode
 {
+int first_block;
 int size;
 char name[8]; 
 };
@@ -47,7 +48,7 @@ char data[512];
  */
 void mymkfs(int s);
 /**
- * @brief get disk and install all the dick on the file system
+ * @brief get disk and install all the disk on the file system
  * @param source 
  * @param target 
  * @param filesystemtype 
@@ -113,3 +114,6 @@ void create_fs();
 void mount_fs();
 //write the file systen on disk
 void sync_fs(char*);
+void print_fs();
+//return file number
+int allocate_file(const char name[8]);

@@ -1,5 +1,7 @@
-make --dry-run --keep-going --print-directory
+make --dry-run --always-make --keep-going --print-directory
 make: Entering directory '/home/haimor/Unix_File_System'
-make: Nothing to be done for 'all'.
+cc    -c -o test_createfile.o test_createfile.c
+gcc -c file_system.c
+gcc -o test test_createfile.o file_system.o
 make: Leaving directory '/home/haimor/Unix_File_System'
  
