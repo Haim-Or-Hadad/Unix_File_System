@@ -1,6 +1,6 @@
 #include "file_system.h"
 
-
+struct myopenfile open_files[10];
 struct superblock super_block;
 struct inode *inodes;
 struct disk_block *disk_blocks;
@@ -27,6 +27,147 @@ for (size_t i = 0; i < super_block.num_blocks; i++)
     disk_blocks[i].next_block_num = -1;
 }
 }
+
+int  allocate_file(const char * path, int size){
+int free_inode = -1;
+int free_block = -1;
+for (size_t i = 0; i < super_block.num_inodes; i++)
+{
+    if (inodes[i].first_block == -1) {
+        free_inode =  i;
+    }       
+}
+for (size_t i = 0; i < super_block.num_blocks; i++)
+{
+    if (disk_blocks[i].next_block_num == -1) {
+        free_block = i;
+   }
+}
+memcmp(inodes[free_inode].name , path, strlen(path));
+inodes[free_inode].first_block = free_block;
+inodes[free_inode].size = size;
+disk_blocks[free_block].next_block_num = -1;
+return free_inode;
+}
+
+int mymkdir(const char *path, const char* name) {
+    myDIR* dirp = myopendir(path);
+    int fd = dirp->fd;
+    if (fd==-1) {
+        return -1;
+    }
+    int dirblock = inodes[fd].first_block;
+    struct mydirent* currdir = (struct mydirent*)disk_blocks[dirblock].data;
+    int newdirfd = allocate_file(path, sizeof(struct mydirent));
+    currdir->files[currdir->size++] = newdirfd;
+    inodes[newdirfd].dir = 1;
+    struct mydirent* newdir = malloc(sizeof(struct mydirent));
+    newdir->size = 0;
+    for (size_t i = 0; i < 15; i++)
+    {
+        newdir->files[i] = -1;
+    }
+    
+    char *newdiraschar = (char*)newdir;
+
+    for (size_t i = 0; i < sizeof(struct mydirent); i++)
+    {
+        writebyte(newdirfd, i, newdiraschar[i]);        
+    }
+    strcpy(newdir->name, name);
+    myclosedir(dirp);
+    return newdirfd;
+}
+
+
+myDIR* myopendir(const char *pathname){
+char str[50];//to save the path
+    memcpy(str, pathname, strlen(pathname));///copy the pathname to str
+    char *path = strtok(str,"/");
+    char current_path[12];
+    char lst_path[12];
+    while (path != NULL)
+    {
+        //printf(" % path\n ", token);//for test
+        strcpy(lst_path,current_path);
+        strcpy(current_path, path);//save in current path
+        path = strtok(NULL, str);
+    }
+    //now we search the path name in inodes
+    for (size_t i = 0; i < super_block.num_inodes; i++)
+    {
+        if (strcmp(inodes[i].name, current_path) == 0 )
+        {
+            if (inodes[i].dir != 1)
+            {
+                return -1;
+            }
+    }
+    return i;
+    }
+    int my_fd = myopendir(lst_path);
+    if (my_fd == -1) {
+        return -1;
+    }
+    if (inodes[my_fd].dir != 1) {
+        perror("DIR_NOT_FILE");
+        return -1;
+    }
+    int d_b = inodes[my_fd].first_block;
+    struct mydirent *currdir = (struct mydirent *) disk_blocks[d_b].data;
+    int newdirfd = allocate_file(current_path, sizeof(struct mydirent));
+    currdir->files[currdir->size++] = newdirfd;
+    inodes[newdirfd].dir = 1;
+    struct mydirent *newdir = malloc(sizeof(struct mydirent));
+    newdir->size = 0;
+    for (size_t i = 0; i < 12; i++) {
+        newdir->files[i] = -1;
+    }
+
+    char *new_dir2 = (char *) newdir;
+    write_byte(newdirfd, 0, new_dir2);
+    open_files[my_fd].pos += (sizeof(struct mydirent));
+    strcpy(newdir->name, pathname);
+    return newdirfd;
+}
+
+
+int myopen(const char *pathname, int flags)
+{
+    char str[50];//to save the path
+    memcpy(str, pathname, strlen(pathname));///copy the pathname to str
+    char *path = strtok(str,"/");
+    char current_path[12];
+    char lst_path[12];
+    while (path != NULL)
+    {
+        //printf(" % path\n ", token);//for test
+        strcmp(current_path, path);//save in current path
+    }
+    //now we search the path name in inodes
+    for (size_t i = 0; i < super_block.num_inodes; i++)
+    {
+        if (strcmp(inodes[i].name, current_path) == 0 )
+        {
+        open_files[i].fd = i;//save the num of file
+        open_files[i].pos = 0; // position of the lseek!
+        return i;
+        }
+    }
+    // if file not exist
+    int p_fd = allocate_file(pathname,1);
+    int d_fd =  myopendir(lst_path); 
+    struct mydirent *current_dir;
+    if (inodes[d_fd].dir != 1) {
+        current_dir =  NULL;
+    }
+    current_dir = (struct mydirent *) disk_blocks[inodes[d_fd].first_block].data;
+    current_dir->files[current_dir->size++] = p_fd;
+    open_files[p_fd].fd = p_fd;
+    open_files[p_fd].pos = 0;
+    return p_fd;
+}
+
 
 //load a file system
 int mymount(const char *source, const char *target,

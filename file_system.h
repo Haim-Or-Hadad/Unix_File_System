@@ -28,6 +28,7 @@ struct inode
 {
 int first_block;
 int size;
+int dir;
 char name[8]; 
 };
 
@@ -41,6 +42,24 @@ int next_block_num;
 char data[512];
 };
 
+/**
+ * @brief 
+ * 
+ */
+struct myopenfile {
+    int fd;
+    int pos; 
+};
+
+struct mydirent { 
+    int size;
+    int files[100];
+    char name[12];
+};
+
+typedef struct myDIR { 
+    int fd; 
+}myDIR;
 
 /**
  * @brief get size and create a file system of s size
@@ -90,7 +109,8 @@ int myclose(int myfd);
 size_t myread(int myfd, void *buf, size_t count);
 
 size_t mywrite(int myfd, const void *buf, size_t count);
-
+int mymkdir(const char *path, const char* name);
+myDIR* myopendir(const char *pathname);
 /**
  * @brief when file open i have a pointer to start of the file.
  * when i read something from the file the pointer transfer to 
@@ -109,11 +129,9 @@ size_t mywrite(int myfd, const void *buf, size_t count);
 //int myclosedir(myDIR *dirp);
 
 //create a new file system
-void create_fs();
+int allocate_file(const char * path, int size);
 //load a file system
 void mount_fs();
 //write the file systen on disk
 void sync_fs(char*);
 void print_fs();
-//return file number
-int allocate_file(const char name[8]);
