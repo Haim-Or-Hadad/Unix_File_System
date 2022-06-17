@@ -96,7 +96,7 @@ int myopen(const char *pathname, int flags);
  * @param myfd 
  * @return int 
  */
-int myclose(int myfd);
+int myclosedir(myDIR* myfd);
 
 /**
  * @brief read the data
@@ -108,6 +108,8 @@ int myclose(int myfd);
  */
 size_t myread(int myfd, void *buf, size_t count);
 
+
+void write_byte(int fd, int pos, char *data);
 size_t mywrite(int myfd, const void *buf, size_t count);
 int mymkdir(const char *path, const char* name);
 myDIR* myopendir(const char *pathname);
@@ -122,7 +124,7 @@ myDIR* myopendir(const char *pathname);
  * @param whence 
  * @return off_t 
  */
-//off_t mylseek(int myfd, off_t offset, int whence);
+int mylseek(int myfd, off_t offset, int whence);
 
 //myDIR *myopendir(const char *name);
 //struct mydirent *myreaddir(myDIR *dirp);
@@ -135,3 +137,4 @@ void mount_fs();
 //write the file systen on disk
 void sync_fs(char*);
 void print_fs();
+void printdir(const char* pathname);

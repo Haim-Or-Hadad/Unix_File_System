@@ -72,7 +72,7 @@ int mymkdir(const char *path, const char* name) {
 
     for (size_t i = 0; i < sizeof(struct mydirent); i++)
     {
-        writebyte(newdirfd, i, newdiraschar[i]);        
+        write_byte(newdirfd, i, newdiraschar[i]);        
     }
     strcpy(newdir->name, name);
     myclosedir(dirp);
@@ -197,13 +197,13 @@ fclose(file);
 }
 
 //return file discriptor
-int allocate_file(const char name[8]){
-int empty_in = find_empty_inode();
-int empty_block = find_empty_block();
+// int allocate_file(const char name[8]){
+// int empty_in = find_empty_inode();
+// int empty_block = find_empty_block();
 
-inodes[empty_in].first_block = empty_block;
-disk_blocks[empty_block].next_block_num = -2;
-}
+// inodes[empty_in].first_block = empty_block;
+// disk_blocks[empty_block].next_block_num = -2;
+//}
 
 int find_empty_inode(){
     for (size_t i = 0; i < super_block.num_inodes; i++)
@@ -227,6 +227,72 @@ int find_empty_block(){
     }//find empty block
 }
 
+int myclosedir(myDIR* myfd){
+    free(myfd);
+}
+
+void write_byte(int fd, int pos, char* data) {
+    int relative_block = pos / size_sb;
+    int block_num = inodes[fd].first_block;
+    while (relative_block > 0) {
+        block_num = disk_blocks[block_num].next_block_num;
+        relative_block--;
+    }
+    int offset = pos % size_sb;
+    for (int i = 0; i < strlen(data); i++) {
+        disk_blocks[block_num].data[offset + i] = data[i];
+    }
+}
+
+size_t myread(int myfd, void *buf, size_t count){
+    char* buffer = malloc(count+1);
+    int rb= inodes[myfd].first_block;
+    int curr_pos=open_files[myfd].pos;
+    for (size_t i = 0; i < count; i++)
+    {
+        while (curr_pos>=size_db) {
+            curr_pos-=size_db;
+            rb = disk_blocks[rb].next_block_num;
+    }
+        int curr_pos=open_files[myfd].pos;
+        buffer[i] = disk_blocks[rb].data[curr_pos];
+        open_files[myfd].pos++;
+    }
+    buffer[count] = '\0';
+    strncpy(buf, buffer, count);
+    free(buffer);
+    
+
+    return open_files[myfd].pos;
+}
+
+size_t mywrite(int myfd, const void *buf, size_t count) {
+    if (inodes[myfd].dir == 1) {
+        return -1;
+    }
+    char *buffer = (char *) buf;
+    write_byte(myfd, open_files[myfd].pos, buffer);
+    open_files[myfd].pos += (count);
+    return open_files[myfd].pos;
+}
+
+int mylseek(int myfd, off_t offset, int whence){
+    if (whence==SEEK_CUR) {
+        open_files[myfd].pos += offset;
+    } 
+    else if (whence==SEEK_END) {
+        open_files[myfd].pos = inodes[myfd].size+offset;
+    } 
+    else if (whence==SEEK_SET) {
+        open_files[myfd].pos = offset;
+    }
+    if (open_files[myfd].pos<0) {
+        open_files[myfd].pos = 0;
+    }
+    return open_files[myfd].pos;
+}
+
+
 void print_fs(){
     printf("superblock info\n");
     printf("num inodes: %d\n", super_block.num_inodes);
@@ -242,4 +308,21 @@ void print_fs(){
     {
         printf("block num %ld = %s \n" , i , disk_blocks[i].data);
     }
+}
+
+
+void printdir(const char* pathname) {
+    /**
+     * @brief Function used for debugging, print information about a directory with a given apth.
+     */
+    myDIR* dirp = myopendir(pathname);
+    int fd = dirp->fd;
+    printf("NAME OF DIRECTORY: %s\n", inodes[fd].name);
+    struct mydirent* currdir = (struct mydirent*)disk_blocks[inodes[fd].first_block].data;
+    for (size_t i = 0; i < currdir->size; i++)
+    {
+        printf("file number %ld: %s, ",i, inodes[currdir->files[i]].name);
+    }
+    myclosedir(dirp);
+    printf("\nDONE\n");
 }
