@@ -8,47 +8,84 @@ size_t size_sb = sizeof(struct superblock);
 size_t size_inode = sizeof(struct inode);
 size_t size_db = sizeof(struct disk_block);
 
-//create a new file system
-void mymkfs(int s){
+int find_empty_inode() {
+    for (int i = 0; i < super_block.num_inodes; i++) {
+        if (inodes[i].first_block == -1) {
+            return i;
+        }
+    }
+    return -1;
+}
 
-super_block.num_inodes = (((s-size_sb)/10) / size_inode);
-super_block.num_blocks = ((s-size_sb)-((s-size_sb)/10)) / size_db ;
-//super_block.size_blocks = sizeof(struct disk_block);
-inodes = malloc(sizeof(struct inode) * super_block.num_inodes);
-for (size_t i = 0; i < super_block.num_inodes; i++)
-{
-    strcpy(inodes[i].name, "inode");
-    inodes[i].size = -1;
+int find_empty_block(){
+    for (size_t i = 0; i < super_block.num_blocks; i++)
+    {
+        if (disk_blocks[i].next_block_num == -1)
+        {
+            return i;
+        }
+        return -1;
+    }//find empty block
 }
-disk_blocks = malloc(sizeof(struct disk_block) * super_block.num_blocks);
-for (size_t i = 0; i < super_block.num_blocks; i++)
-{
-    strcpy(disk_blocks[i].data, "block of disk");
-    disk_blocks[i].next_block_num = -1;
-}
+
+
+void write_byte(int fd, int pos, char* data) {
+    int relative_block = pos / 512;
+    int block_num = inodes[fd].first_block;
+    while (relative_block > 0) {
+        block_num = disk_blocks[block_num].next_block_num;
+        relative_block--;
+    }
+    int offset = pos % 512;
+    for (int i = 0; i < strlen(data); i++) {
+        disk_blocks[block_num].data[offset + i] = data[i];
+    }
 }
 
 int  allocate_file(const char * path, int size){
-int free_inode = -1;
-int free_block = -1;
-for (size_t i = 0; i < super_block.num_inodes; i++)
-{
-    if (inodes[i].first_block == -1) {
-        free_inode =  i;
-    }       
-}
-for (size_t i = 0; i < super_block.num_blocks; i++)
-{
-    if (disk_blocks[i].next_block_num == -1) {
-        free_block = i;
-   }
-}
-memcmp(inodes[free_inode].name , path, strlen(path));
+int free_inode = find_empty_inode();
+int free_block = find_empty_block();
+strcpy(inodes[free_inode].name, path);
 inodes[free_inode].first_block = free_block;
 inodes[free_inode].size = size;
 disk_blocks[free_block].next_block_num = -1;
 return free_inode;
 }
+//create a new file system
+void mymkfs(int s){
+int size_without_sb = s - sizeof(struct superblock);
+super_block.num_inodes = (size_without_sb/10) / size_inode;
+super_block.num_blocks = (size_without_sb-size_without_sb/10) / size_db ;
+super_block.size_blocks = sizeof(struct disk_block);
+inodes = malloc(sizeof(struct inode) * super_block.num_inodes);
+for (size_t i = 0; i < super_block.num_inodes; i++)
+{
+    strcpy(inodes[i].name, "empty");
+    inodes[i].size = -1;
+    inodes[i].dir = 0; //0 mean is file
+    inodes[i].first_block = -1;
+}
+disk_blocks = malloc(sizeof(struct disk_block) * super_block.num_blocks);
+for (size_t i = 0; i < super_block.num_blocks; i++)
+{
+    strcpy(disk_blocks[i].data, "e_block");
+    disk_blocks[i].next_block_num = -1;
+}
+int root_fd=allocate_file("root", sizeof(struct mydirent));
+inodes[root_fd].dir = 1;//1 is dir
+struct mydirent *root_dir = malloc(sizeof(struct mydirent));
+strcpy(root_dir->name, "root");
+root_dir->size = 0;
+for (size_t i = 0; i < 15; i++) {//init files in dir be -1=empty
+        root_dir->files[i] = -1;
+}
+char* dir_of_root_char = (char*)root_dir;
+write_byte(root_fd, 0, dir_of_root_char);
+open_files[root_fd].pos += (sizeof(dir_of_root_char));
+free(root_dir);
+}
+
+
 
 int mymkdir(const char *path, const char* name) {
     myDIR* dirp = myopendir(path);
@@ -81,22 +118,23 @@ int mymkdir(const char *path, const char* name) {
 
 
 myDIR* myopendir(const char *pathname){
-char str[50];//to save the path
-    memcpy(str, pathname, strlen(pathname));///copy the pathname to str
-    char *path = strtok(str,"/");
-    char current_path[12];
-    char lst_path[12];
+    char str[50];//to save the path
+    strcpy(str, pathname);
+    const char s[2] = "/";
+    char *path = strtok(str,s);
+    char current_path[12] = "";
+    char lst_path[12] = "";
     while (path != NULL)
     {
         //printf(" % path\n ", token);//for test
         strcpy(lst_path,current_path);
         strcpy(current_path, path);//save in current path
-        path = strtok(NULL, str);
+        path = strtok(NULL, s);
     }
     //now we search the path name in inodes
     for (size_t i = 0; i < super_block.num_inodes; i++)
     {
-        if (strcmp(inodes[i].name, current_path) == 0 )
+        if (!strcmp(inodes[i].name, current_path))
         {
             if (inodes[i].dir != 1)
             {
@@ -115,15 +153,14 @@ char str[50];//to save the path
     }
     int d_b = inodes[my_fd].first_block;
     struct mydirent *currdir = (struct mydirent *) disk_blocks[d_b].data;
-    int newdirfd = allocate_file(current_path, sizeof(struct mydirent));
+    int newdirfd = allocate_file(sizeof(struct mydirent),current_path);
     currdir->files[currdir->size++] = newdirfd;
     inodes[newdirfd].dir = 1;
     struct mydirent *newdir = malloc(sizeof(struct mydirent));
     newdir->size = 0;
-    for (size_t i = 0; i < 12; i++) {
+    for (size_t i = 0; i < 15; i++) {
         newdir->files[i] = -1;
     }
-
     char *new_dir2 = (char *) newdir;
     write_byte(newdirfd, 0, new_dir2);
     open_files[my_fd].pos += (sizeof(struct mydirent));
@@ -205,44 +242,11 @@ fclose(file);
 // disk_blocks[empty_block].next_block_num = -2;
 //}
 
-int find_empty_inode(){
-    for (size_t i = 0; i < super_block.num_inodes; i++)
-    {
-        if (inodes[i].first_block == -1)
-        {
-            return i;
-        }
-        return -1;
-    }//find empty inode
-}
-
-int find_empty_block(){
-    for (size_t i = 0; i < super_block.num_blocks; i++)
-    {
-        if (disk_blocks[i].next_block_num == -1)
-        {
-            return i;
-        }
-        return -1;
-    }//find empty block
-}
-
 int myclosedir(myDIR* myfd){
     free(myfd);
 }
 
-void write_byte(int fd, int pos, char* data) {
-    int relative_block = pos / size_sb;
-    int block_num = inodes[fd].first_block;
-    while (relative_block > 0) {
-        block_num = disk_blocks[block_num].next_block_num;
-        relative_block--;
-    }
-    int offset = pos % size_sb;
-    for (int i = 0; i < strlen(data); i++) {
-        disk_blocks[block_num].data[offset + i] = data[i];
-    }
-}
+
 
 size_t myread(int myfd, void *buf, size_t count){
     char* buffer = malloc(count+1);

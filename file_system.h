@@ -53,7 +53,7 @@ struct myopenfile {
 
 struct mydirent { 
     int size;
-    int files[100];
+    int files[15];
     char name[12];
 };
 
@@ -108,7 +108,7 @@ int myclosedir(myDIR* myfd);
  */
 size_t myread(int myfd, void *buf, size_t count);
 
-
+int find_empty_inode();
 void write_byte(int fd, int pos, char *data);
 size_t mywrite(int myfd, const void *buf, size_t count);
 int mymkdir(const char *path, const char* name);
