@@ -1,6 +1,30 @@
 #include "Mylibc.h"
 #include "file_system.h"
 
+int myfclose(myFILE *stream){
+myclose(stream->fd);
+   free(stream);   
+}
+
+size_t myfread(void * _ptr, size_t size, size_t nmemb, myFILE * stream){
+    char* buffer = malloc(size*nmemb+1);
+    size_t i;
+    int o_ptr = stream->_ptr;
+    for (i = 0; i < size*nmemb; i++)
+    {
+        if (stream->_ptr+i>stream->size) {
+            break;
+        }
+        buffer[i] = stream->name[stream->_ptr+i];
+        o_ptr++;
+    }
+    stream->_ptr = o_ptr;
+    buffer[size*nmemb] = '\0';
+    strncpy(_ptr, buffer, size*nmemb);
+    free(buffer);
+    return stream->_ptr;
+}
+
 
 myFILE* myfopen(const char *pathname, const char *mode){
     int fd = myopen(pathname,0);
@@ -29,29 +53,6 @@ myFILE* myfopen(const char *pathname, const char *mode){
     }
     myclose(fd);
     return selected_file;
-}
-int myfclose(myFILE *stream){
-myclose(stream->fd);
-   free(stream);   
-}
-
-size_t myfread(void * _ptr, size_t size, size_t nmemb, myFILE * stream){
-    char* buffer = malloc(size*nmemb+1);
-    size_t i;
-    int o_ptr = stream->_ptr;
-    for (i = 0; i < size*nmemb; i++)
-    {
-        if (stream->_ptr+i>stream->size) {
-            break;
-        }
-        buffer[i] = stream->name[stream->_ptr+i];
-        o_ptr++;
-    }
-    stream->_ptr = o_ptr;
-    buffer[size*nmemb] = '\0';
-    strncpy(_ptr, buffer, size*nmemb);
-    free(buffer);
-    return stream->_ptr;
 }
 
 
@@ -83,10 +84,6 @@ size_t myfwrite(const void * _ptr, size_t size, size_t nmemb, myFILE * stream){
     return stream->_ptr;
 }
 
-int myfseek(myFILE *stream, int offset, int whence){
-    mylseek(stream->fd, offset, whence);
-    return 1;
-}
 
 int myfscanf(myFILE * stream, const char * format, ...){
     va_list args;
@@ -154,3 +151,9 @@ int myfprintf(myFILE * stream, const char * format, ...){
     myfwrite(buffer, strlen(buffer), 1, stream);
     return 1; 
     }
+
+
+int myfseek(myFILE *stream, int offset, int whence){
+    mylseek(stream->fd, offset, whence);
+    return 1;
+}
