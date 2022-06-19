@@ -60,6 +60,9 @@ struct mydirent {
 typedef struct myDIR { 
     int fd; 
 }myDIR;
+// typedef struct myDIR { 
+//     int fd; 
+// }myDIR;
 
 /**
  * @brief get size and create a file system of s size
@@ -96,7 +99,7 @@ int myopen(const char *pathname, int flags);
  * @param myfd 
  * @return int 
  */
-int myclosedir(myDIR* myfd);
+// int myclosedir(myDIR* myfd);
 
 /**
  * @brief read the data
@@ -107,12 +110,14 @@ int myclosedir(myDIR* myfd);
  * @return ssize_t 
  */
 size_t myread(int myfd, void *buf, size_t count);
-
+char read_byte(int fd, int pos);
 int find_empty_inode();
-void write_byte(int fd, int pos, char *data);
+void write_byte(int fd, int pos, char data);
 size_t mywrite(int myfd, const void *buf, size_t count);
 int mymkdir(const char *path, const char* name);
 myDIR* myopendir(const char *pathname);
+struct mydirent *myreaddir(myDIR* dir_fd);
+int myfclose(int the_fd);
 /**
  * @brief when file open i have a pointer to start of the file.
  * when i read something from the file the pointer transfer to 
@@ -131,10 +136,17 @@ int mylseek(int myfd, off_t offset, int whence);
 //int myclosedir(myDIR *dirp);
 
 //create a new file system
-int allocate_file(const char * path, int size);
+int allocate_file( int size, const char * path);
 //load a file system
 void mount_fs();
 //write the file systen on disk
 void sync_fs(char*);
 void print_fs();
 void printdir(const char* pathname);
+struct myopenfile open_files[10000];
+struct superblock super_block;
+struct inode *inodes;
+struct disk_block *disk_blocks;
+//size_t size_sb = sizeof(struct superblock);
+//size_t size_inode = sizeof(struct inode);
+//size_t size_db = sizeof(struct disk_block);
