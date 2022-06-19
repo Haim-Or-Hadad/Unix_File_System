@@ -2,7 +2,6 @@
 
 
 
-
 int find_empty_inode() {
     for (size_t i = 0; i < super_block.num_inodes; i++) {
         if (inodes[i].first_block == -1) {
@@ -42,12 +41,6 @@ int get_block_num(int file, int offset) {
 //     }
 // }
 void write_byte(int fd, int pos, char data) { 
-    /**
-     * @brief Write a SINGLE byte into a disk block. 
-     * The function calculates the correct relevant block (rb) that is needed to be accessed. 
-     * if the position that is needed to be wrriten is out of the bounds of the file,
-     * allocate a new disk block for it. 
-     */
     int pos_ = pos;
     int rb = inodes[fd].first_block;
     while (pos_>=512) {
@@ -55,7 +48,7 @@ void write_byte(int fd, int pos, char data) {
         if (disk_blocks[rb].next_block_num==-1) {
             
             return -1;
-        } else if (disk_blocks[rb].next_block_num == -2) { // the current block is the last block, so we allocate a new block
+        } else if (disk_blocks[rb].next_block_num == -2) {
             disk_blocks[rb].next_block_num = find_empty_block(); 
             rb = disk_blocks[rb].next_block_num;
             disk_blocks[rb].next_block_num = -2; 
@@ -70,43 +63,12 @@ void write_byte(int fd, int pos, char data) {
 }
 
 int allocate_file(int size, const char* name) {
-    /**
-     * @brief This function will allocate new inode and enough blocks for a new file. 
-     * (One inode is allocated, the amount of needed blocks is calculated)
-     * 
-     */
-    if (strlen(name)>7) {
-        return -1;
-    }
     int inode = find_empty_inode();
-    if (inode == -1) {
-        return -1;
-    }
     int curr_block = find_empty_block();
-    if (curr_block == -1) {
-        return -1;
-    }
-    inodes[inode].size = size;
     inodes[inode].first_block = curr_block;
+    inodes[inode].size = size;
     disk_blocks[curr_block].next_block_num = -2; 
     strcpy(inodes[inode].name, name);
-    if (size>512) {  // REQUIRES TESTS
-        int allocated_size = -(3*512)/4;
-        //int bn = size/BLOCK_SIZE;
-        int next_block;
-        while (allocated_size<size)
-        {
-            next_block = find_empty_block();
-            if (next_block == -1) {
-                return -1;
-            }
-            disk_blocks[curr_block].next_block_num = next_block;
-            curr_block = next_block;
-            allocated_size+=512;
-        }
-    }
-    disk_blocks[curr_block].next_block_num = -2;
-
     return inode; 
 }
 
@@ -120,6 +82,12 @@ void mymkfs(int s) {
     disk_blocks = malloc(super_block.num_blocks*sizeof(struct disk_block));
 
 
+    for (size_t i = 0; i < super_block.num_blocks; i++)
+    {
+        strcpy(disk_blocks[i].data, "");
+        disk_blocks[i].next_block_num = -1;
+    }
+
     for (size_t i = 0; i < super_block.num_inodes; i++)
     {
         strcpy(inodes[i].name, "");
@@ -127,18 +95,11 @@ void mymkfs(int s) {
         inodes[i].dir = 0; 
     }
 
-    for (size_t i = 0; i < super_block.num_blocks; i++)
-    {
-        strcpy(disk_blocks[i].data, "");
-        disk_blocks[i].next_block_num = -1;
-    }
-
-    // ############### CREATE ROOT FOLDER ###############
-    int zerofd = allocate_file(sizeof(struct mydirent),  "root");
-    if (zerofd != 0 ) {
+    int root_fd = allocate_file(sizeof(struct mydirent),  "root");
+    if (root_fd != 0 ) {
         return -1;
     }
-    inodes[zerofd].dir = 1;
+    inodes[root_fd].dir = 1;
     struct mydirent* rootdir = malloc(sizeof(struct mydirent));
     for (size_t i = 0; i < 10; i++)
     {
@@ -146,10 +107,10 @@ void mymkfs(int s) {
     }
     strcpy(rootdir->name, "root");
     rootdir->size = 0;
-    char* rootdiraschar = (char*)rootdir;
+    char* Croot_dir = (char*)rootdir;
     for (size_t i = 0; i < sizeof(struct mydirent); i++)
     {
-        write_byte(zerofd, i, rootdiraschar[i]);
+        write_byte(root_fd, i, Croot_dir[i]);
     }
     free(rootdir);
 }
@@ -279,6 +240,11 @@ int myopen(const char *pathname, int flags)
     }
     
 
+
+
+int myclosedir(myDIR* myfd){
+    free(myfd);
+}
 
 int myclose(int the_fd){
     open_files[the_fd].pos = -1;

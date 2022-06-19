@@ -115,7 +115,6 @@ void write_byte(int fd, int pos, char data);
 size_t mywrite(int myfd, const void *buf, size_t count);
 int mymkdir(const char *path, const char* name);
 myDIR* myopendir(const char *pathname);
-struct mydirent *myreaddir(myDIR* dir_fd);
 int myclose(int the_fd);
 int mycreatefile(const char *path, const char* name);
 int mymount(const char *source, const char *target, const char *filesystemtype, unsigned long mountflags, const void *data);
@@ -146,3 +145,20 @@ struct myopenfile open_files[10000];
 struct superblock super_block;
 struct inode *inodes;
 struct disk_block *disk_blocks;
+
+
+/**
+ * @brief return the directory of dirp
+ * @return mydirent* of fd
+ */
+struct mydirent *myreaddir(myDIR* dirp);
+
+/**
+ * @brief close the file from my table
+ * func open get path and permissions , find the file in the inodes table 
+ * for easy acsses open has open file system , when file one open
+ * so when i open firstly file i write the number in the table of file discrpetor(index 3).
+ * @param myfd 
+ * @return int 
+ */
+ int myclosedir(myDIR* myfd);
