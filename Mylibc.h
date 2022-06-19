@@ -7,7 +7,7 @@ typedef struct myFILE {
 	char* name;
 	char mode[3];
 	int fd;
-	int ptr;
+	int _ptr;
 	int size;
 }myFILE;
 
