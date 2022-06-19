@@ -11,13 +11,13 @@ myFILE* myfopen(const char *pathname, const char *mode){
     myFILE* currfile = (myFILE*)malloc(sizeof(myFILE));
     strcpy(currfile->mode, mode);
     currfile->fd = fd;
-    currfile->size = inodes[fd].size;
-    currfile->name = malloc(currfile->size);
     if (!strcmp(mode, "a")) { // set the pointer to the end of the file
         currfile->ptr = inodes[fd].size;
     } else {
         currfile->ptr = 0;
     }
+    currfile->size = inodes[fd].size;
+    currfile->name = malloc(currfile->size);
     if (!strcmp(mode, "w")) { 
         for (size_t i = 0; i < currfile->size; i++)
         {
